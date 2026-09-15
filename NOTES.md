@@ -1,0 +1,5 @@
+- 2026-09-16 created: ASC 6812810154 "StairMatch" repointed from the ccwatch complications stub to com.assiamah.stairmatcher (+ .watchkitapp registered), internal group "Sly Internal" 90c25758. Tester stays NOT_INVITED and betaTesterInvitations returns NO_INSTALLABLE_BUILDS until the first upload lands; that's normal.
+- Mac clock runs ~25h behind Apple's servers → every ASC JWT is "expired" (asc MCP 401). The scratchpad asc.py offsets time.time() from the API's Date header. No sudo for sntp.
+- worker: a Workers module may only export the default handler and DO classes. Exporting the tuning constants (ROOM_CAP etc.) crashes the runtime at start with "Incorrect type for map entry". Keep them module-private.
+- worker local dev: port 8787 is the Setlist server. Dev runs on 18787. Mac node is 20, wrangler ≥4.132 needs node 22, and the cached wrangler 4.86 only knows compatibility dates up to 2026-05-03 → compatibility_date pinned to 2026-05-01.
+- Cloudflare deploy blocked until `npx wrangler login` is run by hand: the stored OAuth refresh token in ~/Library/Preferences/.wrangler/config/default.toml returns 400.
