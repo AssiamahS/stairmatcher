@@ -1,0 +1,92 @@
+name: StairMatch
+options:
+  bundleIdPrefix: com.assiamah
+  deploymentTarget:
+    iOS: "26.0"
+    watchOS: "26.0"
+  xcodeVersion: "26.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MARKETING_VERSION: 0.1.0
+    CURRENT_PROJECT_VERSION: 1
+    DEVELOPMENT_TEAM: QGMAWHX827
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+  StairMatch:
+    type: application
+    platform: iOS
+    sources:
+      - StairMatch
+      - Shared
+    dependencies:
+      - target: StairMatchWatch
+    entitlements:
+      path: StairMatch/StairMatch.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+    info:
+      path: StairMatch/Info.plist
+      properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleDisplayName: StairMatch
+        CFBundleIconName: AppIcon
+        UILaunchScreen:
+          UIColorName: LaunchColor
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        UIViewControllerBasedStatusBarAppearance: true
+        ITSAppUsesNonExemptEncryption: false
+        NSMotionUsageDescription: StairMatch uses the motion coprocessor to count your steps and cadence during a climb.
+        NSHealthShareUsageDescription: StairMatch reads your heart rate so your effort can be compared fairly with other climbers.
+        NSHealthUpdateUsageDescription: StairMatch saves each climb as a Stair Stepper workout.
+        NSLocationWhenInUseUsageDescription: StairMatch shows your city to the people you climb with. Only the city, never your gym or address, and only if you turn it on.
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.assiamah.stairmatcher
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_KEY_UIUserInterfaceStyle: Dark
+
+  StairMatchWatch:
+    type: application
+    platform: watchOS
+    sources:
+      - StairMatchWatch
+      - Shared
+    entitlements:
+      path: StairMatchWatch/StairMatchWatch.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+    info:
+      path: StairMatchWatch/Info.plist
+      properties:
+        CFBundleName: StairMatch
+        CFBundleDisplayName: StairMatch
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ITSAppUsesNonExemptEncryption: false
+        WKApplication: true
+        WKCompanionAppBundleIdentifier: com.assiamah.stairmatcher
+        WKRunsIndependentlyOfCompanionApp: false
+        NSMotionUsageDescription: StairMatch counts your steps and cadence on the stairs.
+        NSHealthShareUsageDescription: StairMatch reads your heart rate during a climb.
+        NSHealthUpdateUsageDescription: StairMatch saves each climb as a Stair Stepper workout.
+        WKBackgroundModes: [workout-processing]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.assiamah.stairmatcher.watchkitapp
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SKIP_INSTALL: true
+
+schemes:
+  StairMatch:
+    build:
+      targets:
+        StairMatch: all
+        StairMatchWatch: all
+    run:
+      config: Debug
