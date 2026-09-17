@@ -33,12 +33,19 @@ final class SessionEngine {
 
     var phase: Phase = .idle
     var mode: RoomMode = .pack
-    var level: Int = 6 {
+    /// Never reassign inside didSet: on an @Observable class the stored property is a
+    /// synthesized accessor, so `level = clamp(level)` re-enters the setter until the
+    /// stack overflows (crashed at launch in build 9). Clamp in `setLevel` instead.
+    private(set) var level: Int = 6 {
         didSet {
-            level = min(max(level, StairModel.levelRange.lowerBound), StairModel.levelRange.upperBound)
             UserDefaults.standard.set(level, forKey: "level")
             if phase == .climbing { watch.packState(packState.rawValue, level: level) }
         }
+    }
+
+    func setLevel(_ value: Int) {
+        let clamped = min(max(value, StairModel.levelRange.lowerBound), StairModel.levelRange.upperBound)
+        if clamped != level { level = clamped }
     }
     var elapsed: Double = 0
     var metrics = Metrics()
@@ -61,7 +68,7 @@ final class SessionEngine {
     private var ticker: Task<Void, Never>?
 
     init() {
-        level = UserDefaults.standard.object(forKey: "level") as? Int ?? 6
+        setLevel(UserDefaults.standard.object(forKey: "level") as? Int ?? 6)
     }
 
     // MARK: Lifecycle

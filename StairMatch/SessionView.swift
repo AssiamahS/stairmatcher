@@ -87,14 +87,14 @@ struct SessionView: View {
                 Text("Set it to what the console says").font(.caption2).foregroundStyle(.tertiary)
             }
             Spacer()
-            Button { engine.level -= 1 } label: { Image(systemName: "minus").frame(width: 44, height: 44) }
+            Button { engine.setLevel(engine.level - 1) } label: { Image(systemName: "minus").frame(width: 44, height: 44) }
                 .buttonStyle(.bordered)
             Text("\(engine.level)")
                 .font(.system(.title, design: .rounded, weight: .heavy))
                 .monospacedDigit()
                 .frame(width: 44)
                 .contentTransition(.numericText())
-            Button { engine.level += 1 } label: { Image(systemName: "plus").frame(width: 44, height: 44) }
+            Button { engine.setLevel(engine.level + 1) } label: { Image(systemName: "plus").frame(width: 44, height: 44) }
                 .buttonStyle(.bordered)
         }
         .padding(12)
