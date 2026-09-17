@@ -49,10 +49,15 @@ jobs:
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
 
   testflight:
+    # Manual only while the Apple Account billing hold blocks TestFlight installs.
+    # This lane archives WITH cloud signing: an unsigned archive loses the Watch app's
+    # HealthKit entitlement on export and ASC rejects workout-processing (ITMS-90701).
+    # Cost: each run mints one "Created via API" dev cert (cap 10) — purge via DELETE /v1/certificates.
     name: Sign & upload to TestFlight
     runs-on: macos-26
     timeout-minutes: 45
     needs: build
+    if: github.event_name == 'workflow_dispatch'
     steps:
       - uses: actions/checkout@v4
 
@@ -91,7 +96,7 @@ jobs:
           sed -i '' "s/^    CURRENT_PROJECT_VERSION: .*/    CURRENT_PROJECT_VERSION: $GITHUB_RUN_NUMBER/" project.yml
           xcodegen generate
 
-      - name: Archive (unsigned; exportArchive cloud-signs)
+      - name: Archive (cloud-managed signing; keeps the Watch HealthKit entitlement)
         if: steps.creds.outputs.have == 'true'
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
@@ -104,39 +109,11 @@ jobs:
             -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath build/StairMatch.xcarchive \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
-            CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER
-
-      - name: Inspect the signed IPA (what TestFlight actually gets)
-        if: steps.creds.outputs.have == 'true'
-        env:
-          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
-          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
-        run: |
-          xcodebuild -exportArchive \
-            -archivePath build/StairMatch.xcarchive \
-            -exportOptionsPlist ExportOptions-inspect.plist \
-            -exportPath build/export \
             -allowProvisioningUpdates \
             -authenticationKeyPath "$RUNNER_TEMP/asc/AuthKey.p8" \
             -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID" > /dev/null
-          ls -la build/export
-          mkdir -p build/ipa && unzip -q -o build/export/*.ipa -d build/ipa
-          find build/ipa -maxdepth 4 -name '*.app' -o -maxdepth 4 -name '*.appex' -o -maxdepth 4 -name '*.mobileprovision' | sort
-          for app in build/ipa/Payload/StairMatch.app build/ipa/Payload/StairMatch.app/Watch/StairMatchWatch.app; do
-            echo "=================== $app"
-            plutil -p "$app/Info.plist" | grep -E 'CFBundleIdentifier|CFBundleVersion|CFBundleShortVersionString|MinimumOSVersion|UIDeviceFamily|WKCompanionAppBundleIdentifier|WKApplication|WKRunsIndependently|DTPlatformName|DTSDKName' || true
-            codesign -dvv "$app" 2>&1 | grep -E 'Identifier|Authority|TeamIdentifier|Format' || true
-            codesign -d --entitlements :- "$app" 2>/dev/null | plutil -p - 2>/dev/null || codesign -d --entitlements :- "$app" 2>&1 | head -20
-            if [ -f "$app/embedded.mobileprovision" ]; then
-              security cms -D -i "$app/embedded.mobileprovision" > /tmp/prof.plist
-              plutil -p /tmp/prof.plist | grep -E '"Name"|"AppIDName"|"ExpirationDate"|"ProvisionsAllDevices"|"ProvisionedDevices"|"application-identifier"|"beta-reports-active"|"get-task-allow"|"Platform"|"IsXcodeManaged"' || true
-            else
-              echo "NO embedded.mobileprovision"
-            fi
-          done
-          echo "=================== IPA size"; du -h build/export/*.ipa
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER
 
       - name: Export & upload to App Store Connect
         if: steps.creds.outputs.have == 'true'
