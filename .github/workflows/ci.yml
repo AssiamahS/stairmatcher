@@ -181,11 +181,14 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
       - name: Generate Xcode project (iPhone only)
+        working-directory: .
         run: |
           sed -i '' "s/^    CURRENT_PROJECT_VERSION: .*/    CURRENT_PROJECT_VERSION: $GITHUB_RUN_NUMBER/" project.yml
           sed -i '' '/^      - target: StairMatchWatch$/d' project.yml
+          perl -0pi -e 's/^    dependencies:\n(?!      - )//m' project.yml   # drop the key if it is now empty
           xcodegen generate
       - name: Archive (unsigned)
+        working-directory: .
         run: |
           set -o pipefail
           xcodebuild archive \
@@ -197,6 +200,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
             CURRENT_PROJECT_VERSION=$GITHUB_RUN_NUMBER
       - name: Export ad hoc IPA (cloud signing)
+        working-directory: .
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
@@ -212,6 +216,7 @@ jobs:
             -authenticationKeyIssuerID "$ASC_ISSUER_ID"
           ls -la build/adhoc
       - name: Publish install page to GitHub Pages
+        working-directory: ${{ github.workspace }}
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
