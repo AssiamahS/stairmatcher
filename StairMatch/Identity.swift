@@ -18,6 +18,8 @@ final class Identity: NSObject, CLLocationManagerDelegate {
         }
     }
     var city: String? { didSet { defaults.set(city, forKey: "city") } }
+    enum LocationState: Equatable { case idle, asking, locating, found, denied, failed }
+    var locationState: LocationState = .idle
     var age: Int { didSet { defaults.set(age, forKey: "age") } }
     var weightKg: Double { didSet { defaults.set(weightKg, forKey: "weightKg") } }
     let installId: String
@@ -46,18 +48,44 @@ final class Identity: NSObject, CLLocationManagerDelegate {
     var publicCity: String? { shareCity ? city : nil }
 
     func requestCity() {
-        guard shareCity else { return }
+        guard shareCity else { locationState = .idle; return }
         switch location.authorizationStatus {
-        case .notDetermined: location.requestWhenInUseAuthorization()
-        case .authorizedWhenInUse, .authorizedAlways: location.requestLocation()
-        default: break
+        case .notDetermined:
+            locationState = .asking
+            location.requestWhenInUseAuthorization()
+        case .authorizedWhenInUse, .authorizedAlways:
+            locationState = city == nil ? .locating : .found
+            location.requestLocation()
+        default:
+            locationState = .denied
+        }
+    }
+
+    /// What the Setup screen shows next to "City".
+    var cityLabel: String {
+        if let city { return city }
+        switch locationState {
+        case .idle: return "Not requested"
+        case .asking: return "Waiting for permission"
+        case .locating: return "Locating…"
+        case .found: return "Locating…"
+        case .denied: return "Off in Settings → Privacy → Location"
+        case .failed: return "Couldn't get a fix, retry later"
         }
     }
 
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         let status = manager.authorizationStatus
         Task { @MainActor in
-            if status == .authorizedWhenInUse || status == .authorizedAlways { self.location.requestLocation() }
+            switch status {
+            case .authorizedWhenInUse, .authorizedAlways:
+                self.locationState = .locating
+                self.location.requestLocation()
+            case .denied, .restricted:
+                self.locationState = .denied
+            default:
+                break
+            }
         }
     }
 
@@ -67,9 +95,13 @@ final class Identity: NSObject, CLLocationManagerDelegate {
             let marks = try? await CLGeocoder().reverseGeocodeLocation(loc)
             let mark = marks?.first
             let resolved = mark?.locality ?? mark?.subAdministrativeArea ?? mark?.administrativeArea
-            await MainActor.run { if let resolved { self.city = resolved } }
+            await MainActor.run {
+                if let resolved { self.city = resolved; self.locationState = .found } else { self.locationState = .failed }
+            }
         }
     }
 
-    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {}
+    nonisolated func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        Task { @MainActor in if self.city == nil { self.locationState = .failed } }
+    }
 }

@@ -19,7 +19,7 @@ struct SetupView: View {
                 Section {
                     Toggle("Show my city", isOn: $identity.shareCity)
                     if identity.shareCity {
-                        LabeledContent("City", value: identity.city ?? "Locating…")
+                        LabeledContent("City", value: identity.cityLabel)
                     }
                 } footer: {
                     Text("City only — never your gym or address. Off means you show up as \"Somewhere\".")
@@ -48,5 +48,6 @@ struct SetupView: View {
             }
         }
         .interactiveDismissDisabled(firstRun)
+        .task { if identity.shareCity { identity.requestCity() } }
     }
 }
